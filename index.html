@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7-Eleven RTE AI Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:      #E53935;
+  --red-lt:   #FFEBEE;
+  --red-dk:   #B71C1C;
+  --green:    #16A34A;
+  --grn-lt:   #DCFCE7;
+  --amber:    #EA580C;
+  --amb-lt:   #FFF7ED;
+  --blue:     #2563EB;
+  --blu-lt:   #EFF6FF;
+  --text:     #0F172A;
+  --text-2:   #475569;
+  --muted:    #94A3B8;
+  --bg:       #F1F5F9;
+  --surface:  #FFFFFF;
+  --border:   #E2E8F0;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:   0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg:0 10px 15px rgba(0,0,0,0.06), 0 4px 6px rgba(0,0,0,0.06);
+  --radius:   10px;
+  --radius-sm:6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── TOPBAR ──────────────────────────────────────────── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 200;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+.topbar-left  { display: flex; align-items: center; gap: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.logo {
+  display: flex; align-items: center; gap: 8px;
+}
+.logo-badge {
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+.logo-stripe {
+  width: 3px; height: 28px;
+  background: linear-gradient(180deg, var(--red) 40%, #FF9800 40%);
+  border-radius: 2px;
+}
+.topbar h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.chip-date {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.btn-refresh {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-refresh:hover  { background: var(--red-dk); }
+.btn-refresh:active { transform: scale(0.97); }
+
+/* ── GLOBAL BANNER ───────────────────────────────────── */
+.global-banner {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.g-stat {
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.g-stat-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.g-stat-info { display: flex; flex-direction: column; }
+.g-stat-val  { font-size: 18px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: #fff; line-height: 1.2; }
+.g-stat-label { font-size: 11px; color: #94A3B8; font-weight: 500; letter-spacing: 0.3px; }
+.g-divider { width: 1px; height: 36px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+
+/* ── LAYOUT ──────────────────────────────────────────── */
+.layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  width: 272px;
+  min-width: 272px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.search-wrap {
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-wrap input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px 7px 30px;
+  color: var(--text);
+  font-family: 'Sarabun', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-wrap input::placeholder { color: var(--muted); }
+.search-wrap input:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(229,57,53,0.1);
+}
+
+.branch-list { overflow-y: auto; flex: 1; padding: 6px 0; }
+
+.branch-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+}
+.branch-item::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  background: var(--red);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.branch-item:hover          { background: #FFF5F5; }
+.branch-item.active         { background: var(--red-lt); }
+.branch-item.active::after  { opacity: 1; }
+
+.branch-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.branch-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.branch-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+.score-bar-wrap { height: 3px; background: var(--border); border-radius: 3px; margin-bottom: 5px; }
+.score-bar      { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.branch-badges  { display: flex; gap: 5px; }
+
+.badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  border: 1px solid transparent;
+}
+.badge-red   { background: var(--red-lt);  color: var(--red-dk); border-color: #FFCDD2; }
+.badge-green { background: var(--grn-lt);  color: #15803D;       border-color: #BBF7D0; }
+.badge-amber { background: var(--amb-lt);  color: #C2410C;       border-color: #FED7AA; }
+.badge-gray  { background: var(--bg);      color: var(--text-2); border-color: var(--border); }
+
+/* ── MAIN ────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── SUMMARY CARDS ───────────────────────────────────── */
+.summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.summary-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.summary-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.summary-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.summary-info { display: flex; flex-direction: column; }
+.summary-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+.summary-value { font-size: 24px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1.1; }
+.summary-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.card-red   .summary-icon { background: var(--red-lt); }
+.card-amber .summary-icon { background: var(--amb-lt); }
+.card-green .summary-icon { background: var(--grn-lt); }
+.card-blue  .summary-icon { background: var(--blu-lt); }
+.card-red   .summary-value { color: var(--red-dk); }
+.card-amber .summary-value { color: var(--amber); }
+.card-green .summary-value { color: var(--green); }
+.card-blue  .summary-value { color: var(--blue); }
+
+/* ── DEMAND FACTORS ──────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.panel-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.panel-title {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-2);
+  text-transform: uppercase;
+}
+.factor-grid  { display: flex; gap: 8px; flex-wrap: wrap; }
+.factor-chip  {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+  transition: transform 0.15s;
+  cursor: default;
+}
+.factor-chip:hover { transform: scale(1.04); }
+.factor-spike-payday  { background: #FFF0F0; border-color: #FFCDD2; color: #B71C1C; }
+.factor-spike-weekend { background: #FFF3E0; border-color: #FFE0B2; color: #BF360C; }
+.factor-spike         { background: #FCE4EC; border-color: #F8BBD9; color: #880E4F; }
+.factor-payday        { background: #FFFDE7; border-color: #FFF9C4; color: #F57F17; }
+.factor-weekend       { background: #E3F2FD; border-color: #BBDEFB; color: #1565C0; }
+.factor-normal        { background: var(--bg); border-color: var(--border); color: var(--text-2); }
+
+/* ── FILTERS ─────────────────────────────────────────── */
+.filter-bar {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filter-label { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.filter-date {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--blu-lt);
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px; font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none; appearance: none;
+  outline: none;
+}
+.filter-date:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.filter-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+.filter-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 28px 6px 10px;
+  color: var(--text);
+  font-family: 'Sarabun', sans-serif;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.15s;
+}
+.filter-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(229,57,53,0.1); }
+
+.filter-search {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--text);
+  font-family: 'Sarabun', sans-serif;
+  font-size: 13px;
+  outline: none;
+  width: 170px;
+  transition: border-color 0.15s;
+}
+.filter-search:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(229,57,53,0.1); }
+
+.count-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.count-label strong { color: var(--text-2); }
+
+/* ── TABLE ───────────────────────────────────────────── */
+.table-wrap {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+table { width: 100%; border-collapse: collapse; }
+
+thead th {
+  background: #F8FAFC;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: color 0.12s;
+}
+thead th:hover            { color: var(--red); }
+thead th .sort-icon       { margin-left: 4px; opacity: 0.3; font-size: 10px; }
+thead th.sorted           { color: var(--red); }
+thead th.sorted .sort-icon{ opacity: 1; }
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:nth-child(even) { background: #FAFBFC; }
+tbody tr:hover { background: #FFF5F5 !important; }
+tbody td { padding: 8px 12px; font-size: 13px; vertical-align: middle; }
+
+/* Table cells */
+.sku-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-2);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.product-name {
+  font-weight: 600;
+  max-width: 160px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.product-name:hover {
+  overflow: visible;
+  white-space: normal;
+  background: #fff;
+  position: relative;
+  z-index: 5;
+  box-shadow: var(--shadow);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+}
+
+.rank-a { color: var(--red-dk); font-weight: 700; font-size: 13px; }
+.rank-b { color: var(--amber);  font-weight: 700; font-size: 13px; }
+.rank-c { color: var(--muted); }
+
+.num { font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: right; }
+.num-red   { color: var(--red-dk); font-weight: 600; }
+.num-green { color: var(--green);  font-weight: 600; }
+.num-amber { color: var(--amber);  font-weight: 600; }
+.num-muted { color: #CBD5E1; }
+
+/* Gap bar */
+.gap-cell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.gap-val  { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; }
+
+.status-pill {
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.status-stockout  { background: var(--red-lt);  color: var(--red-dk); border-color: #FFCDD2; }
+.status-overstock { background: var(--amb-lt);  color: #9A3412;       border-color: #FED7AA; }
+.status-balanced  { background: var(--grn-lt);  color: #15803D;       border-color: #BBF7D0; }
+
+.demand-tag {
+  font-size: 10px; padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.reason-cell { font-size: 11px; color: var(--text-2); white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.reason-tag  {
+  font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  font-weight: 600; flex-shrink: 0; border: 1px solid transparent;
+}
+.reason-tag-spike   { background: #FCE4EC; color: #880E4F; border-color: #F8BBD9; }
+.reason-tag-payday  { background: #FFFDE7; color: #F57F17; border-color: #FFF9C4; }
+.reason-tag-weekend { background: #E3F2FD; color: #1565C0; border-color: #BBDEFB; }
+.reason-tag-normal  { background: var(--bg); color: var(--muted); border-color: var(--border); }
+
+/* ── PAGINATION ──────────────────────────────────────── */
+.pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: #FAFBFC;
+}
+.page-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Sarabun', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  font-weight: 500;
+}
+.page-btn:hover    { border-color: var(--red); color: var(--red); background: var(--red-lt); }
+.page-btn.active   { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+.page-btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+.page-ellipsis     { color: var(--muted); padding: 0 4px; font-size: 13px; }
+
+/* ── EMPTY / LOADING ─────────────────────────────────── */
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.empty-icon { font-size: 36px; opacity: 0.6; }
+.empty-text { font-size: 14px; font-weight: 500; }
+
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; font-size: 13px; color: var(--muted); gap: 10px;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SCROLLBARS ──────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <div class="logo-badge">7-ELEVEN</div>
+      <div class="logo-stripe"></div>
+      <h1>AI Suggested Order · RTE Forecasting</h1>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="chip-date" id="lastUpdate">⏳ Loading...</div>
+    <button class="btn-refresh" onclick="location.reload()">↺ Refresh</button>
+  </div>
+</div>
+
+<!-- GLOBAL BANNER -->
+<div class="global-banner" id="globalBanner">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">🏪 สาขาทั้งหมด · เรียงตาม Critical</div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="branchSearch" placeholder="ค้นหาสาขา..." oninput="filterBranchList()">
+      </div>
+    </div>
+    <div class="branch-list" id="branchList">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="loading"><div class="spinner"></div> กำลังโหลดข้อมูล...</div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const SB_URL     = 'https://hrmtrplqsvjcojmobmby.supabase.co';
+const SB_KEY     = 'sb_publishable_chAqNLtW_g7dFnqzYfTNPA_H947QyXF';
+const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+
+async function sbGet(path) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_HEADERS });
+  if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  return res.json();
+}
+async function sbGetAll(table, select = '*') {
+  const rows = [];
+  let offset = 0;
+  while (true) {
+    const batch = await sbGet(`${table}?select=${select}&limit=1000&offset=${offset}`);
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+  }
+  return rows;
+}
+
+// ── FIELD MAPPING ─────────────────────────────────────────────────────────────
+const mapVillage = v => ({
+  Village_ID: v.village_id, Village_Name: v.village_name,
+  total_skus: v.total_skus, stockout_count: v.stockout_count,
+  balanced_count: v.balanced_count, overstock_count: v.overstock_count,
+  total_suggested_order: v.total_suggested_order, total_overstock: v.total_overstock,
+});
+const mapDetail = d => ({
+  Village_ID: d.village_id, Village_Name: d.village_name,
+  SKU_ID: d.sku_id, Product_Name: d.product_name,
+  Category: d.category, Rank: d.rank, Price: d.price,
+  Product_Life_Days: d.product_life_days,
+  Inventory_On_Hand: d.inventory_on_hand,
+  Predicted_Demand: d.predicted_demand,
+  Stock_Gap: d.stock_gap, Suggested_Order: d.suggested_order,
+  Overstock_Qty: d.overstock_qty, Stockout_Qty: d.stockout_qty,
+  Stock_Status: d.stock_status, Demand_Factor: d.demand_factor, Date: d.date,
+});
+
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 20;
+const COL_DEFS  = [
+  { key: 'SKU_ID',            label: 'SKU' },
+  { key: 'Product_Name',      label: 'ชื่อสินค้า' },
+  { key: 'Category',          label: 'Category' },
+  { key: 'Rank',              label: 'Rank' },
+  { key: 'Inventory_On_Hand', label: 'สต็อก' },
+  { key: 'Predicted_Demand',  label: 'AI คาด' },
+  { key: 'Suggested_Order',   label: '+สั่ง' },
+  { key: 'Overstock_Qty',     label: '-เกิน' },
+  { key: 'Stock_Gap',         label: 'Gap' },
+  { key: 'Stock_Status',      label: 'สถานะ' },
+  { key: 'Demand_Factor',     label: 'Demand Factor' },
+  { key: '_reason',           label: '🤖 เหตุผล AI', noSort: true },
+];
+
+const FACTOR_CLASS = {
+  'Spike + Payday': 'factor-spike-payday', 'Spike + Weekend': 'factor-spike-weekend',
+  'Demand Spike': 'factor-spike', 'Payday': 'factor-payday',
+  'Weekend': 'factor-weekend', 'Normal Weekday': 'factor-normal',
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const state = {
+  allData: [], villages: [], currentVillage: null,
+  filteredRows: [], currentPage: 1, sortCol: 'Stock_Gap', sortDir: -1,
+  currentDate: null,   // null = latest
+  allDates: [],
+};
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const [villages, detail] = await Promise.all([
+      sbGetAll('villages'), sbGetAll('sku_detail'),
+    ]);
+    state.villages = villages.map(mapVillage);
+    state.allData  = detail.map(mapDetail);
+
+    // รวบรวมวันที่ทั้งหมด เรียงจากล่าสุด → เก่าสุด
+    state.allDates = [...new Set(state.allData.map(d => d.Date).filter(Boolean))].sort().reverse();
+    state.currentDate = state.allDates[0] || null;
+
+    const latest = state.currentDate || 'N/A';
+    document.getElementById('lastUpdate').textContent = `📅 ${latest}`;
+
+    renderGlobalBanner();
+    renderBranchList();
+    selectBranch(state.villages[0]);
+  } catch (err) {
+    document.getElementById('main').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-text">โหลดข้อมูลจาก Supabase ไม่ได้</div>
+        <div style="font-size:12px;color:var(--muted)">${err.message}</div>
+      </div>`;
+  }
+})();
+
+// ── GLOBAL BANNER ─────────────────────────────────────────────────────────────
+function renderGlobalBanner() {
+  const total    = state.villages.reduce((s,v) => s + v.total_skus, 0);
+  const stockout = state.villages.reduce((s,v) => s + v.stockout_count, 0);
+  const overstock= state.villages.reduce((s,v) => s + v.overstock_count, 0);
+  const balanced = state.villages.reduce((s,v) => s + v.balanced_count, 0);
+  const orders   = state.villages.reduce((s,v) => s + v.total_suggested_order, 0);
+  const critPct  = ((stockout / total) * 100).toFixed(1);
+
+  document.getElementById('globalBanner').innerHTML = `
+    <div class="g-stat">
+      <div class="g-stat-icon" style="background:rgba(229,57,53,0.2)">🏪</div>
+      <div class="g-stat-info">
+        <span class="g-stat-val">${state.villages.length}</span>
+        <span class="g-stat-label">สาขา</span>
+      </div>
+    </div>
+    <div class="g-divider"></div>
+    <div class="g-stat">
+      <div class="g-stat-icon" style="background:rgba(229,57,53,0.2)">🔴</div>
+      <div class="g-stat-info">
+        <span class="g-stat-val" style="color:#FCA5A5">${stockout.toLocaleString()}</span>
+        <span class="g-stat-label">STOCKOUT รวม (${critPct}%)</span>
+      </div>
+    </div>
+    <div class="g-divider"></div>
+    <div class="g-stat">
+      <div class="g-stat-icon" style="background:rgba(234,88,12,0.2)">🟡</div>
+      <div class="g-stat-info">
+        <span class="g-stat-val" style="color:#FCD34D">${overstock.toLocaleString()}</span>
+        <span class="g-stat-label">OVERSTOCK รวม</span>
+      </div>
+    </div>
+    <div class="g-divider"></div>
+    <div class="g-stat">
+      <div class="g-stat-icon" style="background:rgba(22,163,74,0.2)">🟢</div>
+      <div class="g-stat-info">
+        <span class="g-stat-val" style="color:#86EFAC">${balanced.toLocaleString()}</span>
+        <span class="g-stat-label">BALANCED รวม</span>
+      </div>
+    </div>
+    <div class="g-divider"></div>
+    <div class="g-stat">
+      <div class="g-stat-icon" style="background:rgba(37,99,235,0.2)">📦</div>
+      <div class="g-stat-info">
+        <span class="g-stat-val" style="color:#93C5FD">${orders.toLocaleString()}</span>
+        <span class="g-stat-label">ยูนิตต้องสั่งทั้งระบบ</span>
+      </div>
+    </div>`;
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+function criticalScore(v) {
+  return Math.round((v.stockout_count / v.total_skus) * 70 + (v.overstock_count / v.total_skus) * 30);
+}
+function scoreColor(s) {
+  return s >= 25 ? '#E53935' : s >= 15 ? '#EA580C' : '#16A34A';
+}
+
+function renderBranchList(filter = '') {
+  const q = filter.toLowerCase();
+  const items = state.villages
+    .filter(v => v.Village_Name.toLowerCase().includes(q) || v.Village_ID.toLowerCase().includes(q))
+    .map(v => ({ ...v, _score: criticalScore(v) }))
+    .sort((a, b) => b._score - a._score);
+
+  const list = document.getElementById('branchList');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty" style="padding:28px"><div class="empty-icon">🔍</div><div class="empty-text">ไม่พบสาขา</div></div>';
+    return;
+  }
+
+  list.innerHTML = items.map((v, i) => {
+    const isActive = state.currentVillage?.Village_ID === v.Village_ID;
+    const score    = v._score;
+    const color    = scoreColor(score);
+    const barW     = Math.min(100, Math.round(score / 0.7));
+    return `
+      <div class="branch-item ${isActive ? 'active' : ''}"
+           onclick="selectBranch(${JSON.stringify(v).replace(/"/g,'&quot;')})">
+        <div class="branch-row1">
+          <div class="branch-name">${v.Village_Name}</div>
+          <span class="branch-score" style="color:${color}">${score}</span>
+        </div>
+        <div class="score-bar-wrap">
+          <div class="score-bar" style="width:${barW}%;background:${color}"></div>
+        </div>
+        <div class="branch-badges">
+          <span class="badge badge-red">🔴 ${v.stockout_count}</span>
+          <span class="badge badge-amber">🟡 ${v.overstock_count}</span>
+          <span class="badge badge-green">🟢 ${v.balanced_count}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filterBranchList() { renderBranchList(document.getElementById('branchSearch').value); }
+
+function selectBranch(v) {
+  state.currentVillage = v;
+  state.currentPage    = 1;
+  applyFilters();
+  renderBranchList(document.getElementById('branchSearch').value);
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function applyFilters() {
+  if (!state.currentVillage) return;
+  const sf = document.getElementById('filterStatus')?.value   || 'ALL';
+  const cf = document.getElementById('filterCategory')?.value || 'ALL';
+  const rf = document.getElementById('filterRank')?.value     || 'ALL';
+  const sq = document.getElementById('searchSKU')?.value.toLowerCase() || '';
+
+  const df = state.currentDate;
+  let rows = state.allData.filter(d => d.Village_ID === state.currentVillage.Village_ID);
+  if (df)        rows = rows.filter(d => d.Date        === df);
+  if (sf !== 'ALL') rows = rows.filter(d => d.Stock_Status === sf);
+  if (cf !== 'ALL') rows = rows.filter(d => d.Category     === cf);
+  if (rf !== 'ALL') rows = rows.filter(d => d.Rank         === rf);
+  if (sq) rows = rows.filter(d =>
+    d.Product_Name.toLowerCase().includes(sq) || d.SKU_ID.toLowerCase().includes(sq));
+
+  rows.sort((a, b) => {
+    const av = a[state.sortCol], bv = b[state.sortCol];
+    if (typeof av === 'string') return av.localeCompare(bv) * state.sortDir;
+    return ((av ?? 0) - (bv ?? 0)) * state.sortDir;
+  });
+
+  state.filteredRows = rows;
+  state.currentPage  = 1;
+  renderMain();
+}
+
+function changeDate(val) {
+  state.currentDate = val || null;
+  const label = val || 'N/A';
+  document.getElementById('lastUpdate').textContent = `📅 ${label}`;
+  applyFilters();
+}
+
+function sortBy(col) {
+  if (state.sortCol === col) state.sortDir *= -1;
+  else { state.sortCol = col; state.sortDir = -1; }
+  applyFilters();
+}
+
+function changePage(p) {
+  const tp = Math.ceil(state.filteredRows.length / PAGE_SIZE);
+  if (p < 1 || p > tp) return;
+  state.currentPage = p;
+  renderMain();
+  document.getElementById('main').scrollTo(0, 0);
+}
+
+// ── CSS HELPERS ───────────────────────────────────────────────────────────────
+const statusClass = s => ({ STOCKOUT:'status-stockout', OVERSTOCK:'status-overstock', BALANCED:'status-balanced' }[s] || '');
+const statusDot   = s => ({ STOCKOUT:'🔴', OVERSTOCK:'🟡', BALANCED:'🟢' }[s] || '');
+const rankClass   = r => ({ A:'rank-a', B:'rank-b', C:'rank-c' }[r] || '');
+const gapClass    = g => g > 5 ? 'num-red' : g < -5 ? 'num-amber' : 'num-green';
+
+// ── AI REASON ─────────────────────────────────────────────────────────────────
+function buildReason(r) {
+  const rankLabel = { A:'Rank A ขายดี', B:'Rank B ปานกลาง', C:'Rank C ขายช้า' }[r.Rank];
+  const [tagType, tagText] = {
+    'Demand Spike':    ['spike',   '📈 ดีมานด์พุ่ง'],
+    'Spike + Payday':  ['spike',   '📈 Spike+เงินเดือน'],
+    'Spike + Weekend': ['spike',   '📈 Spike+วันหยุด'],
+    'Payday':          ['payday',  '💰 เงินเดือน'],
+    'Weekend':         ['weekend', '🏖️ วันหยุด'],
+    'Normal Weekday':  ['normal',  '📅 วันธรรมดา'],
+  }[r.Demand_Factor] || ['normal', r.Demand_Factor];
+
+  let action = '';
+  if (r.Stock_Status === 'STOCKOUT')
+    action = `ขาด <b>${r.Stock_Gap}</b> ชิ้น → <span style="color:var(--red-dk)">+${r.Suggested_Order}</span>`;
+  else if (r.Stock_Status === 'OVERSTOCK')
+    action = `เกิน <b>${Math.abs(r.Stock_Gap)}</b> ชิ้น → <span style="color:var(--amber)">ระบาย</span>`;
+  else
+    action = `สมดุล (${r.Stock_Gap >= 0 ? '+' : ''}${r.Stock_Gap}) → <span style="color:var(--green)">OK</span>`;
+
+  return `<div class="reason-cell">
+    <span class="reason-tag reason-tag-${tagType}">${tagText}</span>
+    <span>${rankLabel} · ${action}</span>
+  </div>`;
+}
+
+// ── RENDER BLOCKS ─────────────────────────────────────────────────────────────
+function buildSummaryHTML(v, branchRows) {
+  const totalOrder  = branchRows.reduce((s, d) => s + (d.Suggested_Order || 0), 0);
+  const stockoutPct = ((v.stockout_count / v.total_skus) * 100).toFixed(0);
+  return `
+    <div class="summary-row">
+      <div class="summary-card card-blue">
+        <div class="summary-icon">🏪</div>
+        <div class="summary-info">
+          <div class="summary-label">สาขา</div>
+          <div class="summary-value" style="font-size:16px;color:var(--text)">${v.Village_Name}</div>
+          <div class="summary-sub">${v.Village_ID} · ${v.total_skus} SKUs</div>
+        </div>
+      </div>
+      <div class="summary-card card-red">
+        <div class="summary-icon">🔴</div>
+        <div class="summary-info">
+          <div class="summary-label">STOCKOUT</div>
+          <div class="summary-value">${v.stockout_count}</div>
+          <div class="summary-sub">${stockoutPct}% ของ SKUs ทั้งหมด</div>
+        </div>
+      </div>
+      <div class="summary-card card-amber">
+        <div class="summary-icon">🟡</div>
+        <div class="summary-info">
+          <div class="summary-label">OVERSTOCK</div>
+          <div class="summary-value">${v.overstock_count}</div>
+          <div class="summary-sub">SKU ที่สต็อกเกิน</div>
+        </div>
+      </div>
+      <div class="summary-card card-green">
+        <div class="summary-icon">📦</div>
+        <div class="summary-info">
+          <div class="summary-label">ต้องสั่งเพิ่ม</div>
+          <div class="summary-value" style="color:var(--amber)">${totalOrder.toLocaleString()}</div>
+          <div class="summary-sub">ยูนิตรวมทุก SKU</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildDemandFactorHTML(branchRows) {
+  const counts = {};
+  branchRows.forEach(r => { counts[r.Demand_Factor] = (counts[r.Demand_Factor] || 0) + 1; });
+  const chips = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([f, c]) => `<span class="factor-chip ${FACTOR_CLASS[f]||'factor-normal'}">${f} <b>${c}</b></span>`)
+    .join('');
+  return `
+    <div class="panel">
+      <div class="panel-header">
+        <span>📊</span>
+        <span class="panel-title">Demand Factor · เหตุผลที่ AI ปรับการคาดการณ์</span>
+      </div>
+      <div class="factor-grid">${chips}</div>
+    </div>`;
+}
+
+function buildFiltersHTML(branchRows, filteredCount) {
+  const categories = [...new Set(branchRows.map(d => d.Category))].sort();
+  const dateOpts = state.allDates.map(d => {
+    const selected = d === state.currentDate ? 'selected' : '';
+    // แปลงวันที่เป็นอ่านง่าย + บอก demand factor ถ้ามี
+    const sample = state.allData.find(r => r.Date === d);
+    const factor = sample?.Demand_Factor || '';
+    const factorTag = {
+      'Demand Spike': '📈', 'Spike + Payday': '📈💰',
+      'Spike + Weekend': '📈🏖️', 'Payday': '💰',
+      'Weekend': '🏖️', 'Normal Weekday': '',
+    }[factor] || '';
+    return `<option value="${d}" ${selected}>${d}${factorTag ? '  ' + factorTag : ''}</option>`;
+  }).join('');
+
+  return `
+    <div class="filter-bar">
+      <span class="filter-label">📅 วันที่:</span>
+      <select class="filter-date" id="filterDate" onchange="changeDate(this.value)">
+        ${dateOpts}
+      </select>
+      <div class="filter-divider"></div>
+      <span class="filter-label">กรอง:</span>
+      <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+        <option value="ALL">สถานะทั้งหมด</option>
+        <option value="STOCKOUT">🔴 STOCKOUT</option>
+        <option value="BALANCED">🟢 BALANCED</option>
+        <option value="OVERSTOCK">🟡 OVERSTOCK</option>
+      </select>
+      <select class="filter-select" id="filterCategory" onchange="applyFilters()">
+        <option value="ALL">Category ทั้งหมด</option>
+        ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+      </select>
+      <select class="filter-select" id="filterRank" onchange="applyFilters()">
+        <option value="ALL">Rank ทั้งหมด</option>
+        <option value="A">Rank A</option>
+        <option value="B">Rank B</option>
+        <option value="C">Rank C</option>
+      </select>
+      <input class="filter-search" type="text" id="searchSKU" placeholder="🔍 ค้นหาสินค้า..." oninput="applyFilters()">
+      <span class="count-label">แสดง <strong>${filteredCount}</strong> จาก ${branchRows.length} รายการ</span>
+    </div>`;
+}
+
+function buildTableHTML(pageRows) {
+  const thead = COL_DEFS.map(c => {
+    const sorted = !c.noSort && state.sortCol === c.key;
+    const icon   = c.noSort ? '' : ` <span class="sort-icon">${sorted ? (state.sortDir === -1 ? '▼' : '▲') : '⇅'}</span>`;
+    const click  = c.noSort ? '' : `onclick="sortBy('${c.key}')"`;
+    return `<th ${click} class="${sorted ? 'sorted' : ''}">${c.label}${icon}</th>`;
+  }).join('');
+
+  const tbody = pageRows.length
+    ? pageRows.map(r => `
+      <tr>
+        <td><span class="sku-id">${r.SKU_ID}</span></td>
+        <td><div class="product-name" title="${r.Product_Name}">${r.Product_Name}</div></td>
+        <td style="font-size:12px;color:var(--text-2)">${r.Category}</td>
+        <td><span class="${rankClass(r.Rank)}">${r.Rank}</span></td>
+        <td class="num">${r.Inventory_On_Hand}</td>
+        <td class="num num-green">${r.Predicted_Demand}</td>
+        <td class="num ${r.Suggested_Order > 0 ? 'num-red' : 'num-muted'}">${r.Suggested_Order > 0 ? '+'+r.Suggested_Order : '—'}</td>
+        <td class="num ${r.Overstock_Qty > 0 ? 'num-amber' : 'num-muted'}">${r.Overstock_Qty > 0 ? '−'+r.Overstock_Qty : '—'}</td>
+        <td class="num ${gapClass(r.Stock_Gap)}">${r.Stock_Gap > 0 ? '+' : ''}${r.Stock_Gap}</td>
+        <td><span class="status-pill ${statusClass(r.Stock_Status)}">${statusDot(r.Stock_Status)} ${r.Stock_Status}</span></td>
+        <td><span class="demand-tag">${r.Demand_Factor}</span></td>
+        <td>${buildReason(r)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="${COL_DEFS.length}">
+        <div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">ไม่พบข้อมูลที่ค้นหา</div></div>
+       </td></tr>`;
+
+  return `
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr>${thead}</tr></thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>
+      ${buildPaginationHTML()}
+    </div>`;
+}
+
+function buildPaginationHTML() {
+  const tp = Math.ceil(state.filteredRows.length / PAGE_SIZE);
+  if (tp <= 1) return '';
+  const p    = state.currentPage;
+  const prev = `<button class="page-btn" onclick="changePage(${p-1})" ${p===1?'disabled':''}>‹</button>`;
+  const next = `<button class="page-btn" onclick="changePage(${p+1})" ${p===tp?'disabled':''}>›</button>`;
+  const pages = Array.from({length:tp},(_,i)=>i+1)
+    .filter(n => n===1 || n===tp || Math.abs(n-p)<=2)
+    .reduce((acc,n,i,arr) => { if(i>0&&n-arr[i-1]>1) acc.push('…'); acc.push(n); return acc; }, [])
+    .map(n => n==='…'
+      ? `<span class="page-ellipsis">…</span>`
+      : `<button class="page-btn ${n===p?'active':''}" onclick="changePage(${n})">${n}</button>`)
+    .join('');
+  return `<div class="pagination">${prev}${pages}${next}</div>`;
+}
+
+// ── RENDER MAIN ───────────────────────────────────────────────────────────────
+function renderMain() {
+  if (!state.currentVillage) return;
+  const v          = state.currentVillage;
+  const branchRows = state.allData.filter(d => d.Village_ID === v.Village_ID);
+  const pageRows   = state.filteredRows.slice((state.currentPage-1)*PAGE_SIZE, state.currentPage*PAGE_SIZE);
+  document.getElementById('main').innerHTML =
+    buildSummaryHTML(v, branchRows) +
+    buildDemandFactorHTML(branchRows) +
+    buildFiltersHTML(branchRows, state.filteredRows.length) +
+    buildTableHTML(pageRows);
+}
+</script>
+</body>
+</html>
