@@ -389,6 +389,30 @@ body {
   white-space: nowrap;
 }
 .count-label strong { color: var(--text-2); }
+.expand-btn {
+  margin-left: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-2);
+  line-height: 1;
+}
+.expand-btn:hover { background: var(--bg); }
+
+/* ── TABLE FULLSCREEN ────────────────────────────────── */
+.table-wrap.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  border-radius: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+}
+.table-wrap.fullscreen .table-scroll { flex: 1; min-height: 0; }
 
 /* ── TABLE ───────────────────────────────────────────── */
 .table-wrap {
@@ -1003,6 +1027,7 @@ function buildFiltersHTML(branchRows, filteredCount) {
       </select>
       <input class="filter-search" type="text" id="searchSKU" placeholder="🔍 ค้นหาสินค้า..." oninput="applyFilters()">
       <span class="count-label">แสดง <strong>${filteredCount}</strong> จาก ${branchRows.length} รายการ</span>
+      <button class="expand-btn" onclick="toggleTableExpand()" id="expandBtn" title="ขยายเต็มจอ">⛶</button>
     </div>`;
 }
 
@@ -1060,6 +1085,15 @@ function buildPaginationHTML() {
       : `<button class="page-btn ${n===p?'active':''}" onclick="changePage(${n})">${n}</button>`)
     .join('');
   return `<div class="pagination">${prev}${pages}${next}</div>`;
+}
+
+// ── TABLE EXPAND ─────────────────────────────────────────────────────────────
+function toggleTableExpand() {
+  const wrap = document.querySelector('.table-wrap');
+  const btn  = document.getElementById('expandBtn');
+  if (!wrap) return;
+  wrap.classList.toggle('fullscreen');
+  btn.textContent = wrap.classList.contains('fullscreen') ? '✕' : '⛶';
 }
 
 // ── RENDER MAIN ───────────────────────────────────────────────────────────────
