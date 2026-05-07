@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>7-Eleven RTE AI Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
   --red:      #E53935;
@@ -592,6 +593,28 @@ tbody td { padding: 8px 12px; font-size: 13px; vertical-align: middle; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── CHARTS ──────────────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 1.4fr;
+  gap: 12px;
+  align-items: stretch;
+}
+.chart-panel { display: flex; flex-direction: column; }
+.chart-panel .panel-header { margin-bottom: 8px; }
+.chart-insight {
+  font-size: 11px; color: var(--muted);
+  margin-left: auto; font-style: italic;
+}
+.chart-container { position: relative; flex: 1; min-height: 160px; }
+.chart-center-label {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -58%);
+  text-align: center; pointer-events: none;
+}
+.chart-center-val { font-size: 20px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+.chart-center-sub { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; }
+
 /* ── SCROLLBARS ──────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1097,17 +1120,164 @@ function toggleTableExpand() {
   btn.textContent = wrap.classList.contains('fullscreen') ? '✕' : '⛶';
 }
 
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function buildChartsHTML() {
+  return `
+    <div class="charts-row">
+      <div class="panel chart-panel">
+        <div class="panel-header">
+          <span>🍩</span>
+          <span class="panel-title">Stock Health</span>
+          <span class="chart-insight">สัดส่วนสุขภาพสต็อก</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartDonut"></canvas>
+          <div class="chart-center-label" id="donutCenter"></div>
+        </div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="panel-header">
+          <span>📊</span>
+          <span class="panel-title">Stockout ตาม Category</span>
+          <span class="chart-insight">หมวดที่น่าเป็นห่วง</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartCategory"></canvas>
+        </div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="panel-header">
+          <span>🎯</span>
+          <span class="panel-title">Inventory vs AI Forecast</span>
+          <span class="chart-insight">เหนือเส้น = ต้องสั่งเพิ่ม</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartScatter"></canvas>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCharts(rows) {
+  ['chartDonut','chartCategory','chartScatter'].forEach(id => {
+    const c = Chart.getChart(id);
+    if (c) c.destroy();
+  });
+
+  // 1. Donut — Stock Status
+  const sc = { STOCKOUT: 0, BALANCED: 0, OVERSTOCK: 0 };
+  rows.forEach(r => { if (sc[r.Stock_Status] !== undefined) sc[r.Stock_Status]++; });
+  const stockoutPct = rows.length ? Math.round((sc.STOCKOUT / rows.length) * 100) : 0;
+
+  new Chart(document.getElementById('chartDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['STOCKOUT', 'BALANCED', 'OVERSTOCK'],
+      datasets: [{ data: [sc.STOCKOUT, sc.BALANCED, sc.OVERSTOCK],
+        backgroundColor: ['#E53935', '#16A34A', '#EA580C'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10, family: 'Sarabun' }, padding: 6, boxWidth: 10 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} SKU` } }
+      }
+    }
+  });
+  const centerEl = document.getElementById('donutCenter');
+  if (centerEl) {
+    const color = stockoutPct >= 25 ? '#B71C1C' : stockoutPct >= 15 ? '#EA580C' : '#15803D';
+    centerEl.innerHTML = `<div class="chart-center-val" style="color:${color}">${stockoutPct}%</div><div class="chart-center-sub">STOCKOUT</div>`;
+  }
+
+  // 2. Horizontal Bar — Category Stockout
+  const catMap = {};
+  rows.filter(r => r.Stock_Status === 'STOCKOUT')
+      .forEach(r => { catMap[r.Category] = (catMap[r.Category] || 0) + 1; });
+  const cats = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  new Chart(document.getElementById('chartCategory'), {
+    type: 'bar',
+    data: {
+      labels: cats.map(c => c[0]),
+      datasets: [{
+        label: 'STOCKOUT SKUs',
+        data: cats.map(c => c[1]),
+        backgroundColor: cats.map((_, i) => `rgba(229,57,53,${1 - i * 0.12})`),
+        borderRadius: 4, borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} SKU ขาดสต็อก` } }
+      },
+      scales: {
+        x: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } }, beginAtZero: true },
+        y: { ticks: { font: { size: 11, family: 'Sarabun' } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // 3. Scatter — Inventory vs Demand with diagonal balance line
+  const maxVal = Math.max(...rows.map(r => Math.max(r.Inventory_On_Hand, r.Predicted_Demand)), 10);
+  const byStatus = {
+    STOCKOUT:  { label: '🔴 STOCKOUT',  color: 'rgba(229,57,53,0.65)',  data: [] },
+    BALANCED:  { label: '🟢 BALANCED',  color: 'rgba(22,163,74,0.55)',  data: [] },
+    OVERSTOCK: { label: '🟡 OVERSTOCK', color: 'rgba(234,88,12,0.65)',  data: [] },
+  };
+  rows.forEach(r => {
+    if (byStatus[r.Stock_Status])
+      byStatus[r.Stock_Status].data.push({ x: r.Inventory_On_Hand, y: r.Predicted_Demand });
+  });
+
+  const datasets = Object.values(byStatus).map(s => ({
+    label: s.label, data: s.data,
+    backgroundColor: s.color, pointRadius: 3.5, pointHoverRadius: 5,
+  }));
+  datasets.push({
+    label: 'Balance Line', type: 'line',
+    data: [{ x: 0, y: 0 }, { x: maxVal, y: maxVal }],
+    borderColor: '#CBD5E1', borderDash: [4, 4], borderWidth: 1.5,
+    pointRadius: 0, fill: false,
+  });
+
+  new Chart(document.getElementById('chartScatter'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10, family: 'Sarabun' }, padding: 6, boxWidth: 10,
+          filter: item => item.text !== 'Balance Line' } },
+        tooltip: { callbacks: { label: ctx => ` สต็อก ${ctx.parsed.x} → คาด ${ctx.parsed.y}` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'สต็อกที่มี (ชิ้น)', font: { size: 10 }, color: '#94A3B8' },
+             grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } } },
+        y: { title: { display: true, text: 'AI คาดการณ์ (ชิ้น)', font: { size: 10 }, color: '#94A3B8' },
+             grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
 // ── RENDER MAIN ───────────────────────────────────────────────────────────────
 function renderMain() {
   if (!state.currentVillage) return;
   const v          = state.currentVillage;
   const branchRows = state.allData.filter(d => d.Village_ID === v.Village_ID);
+  const chartRows  = branchRows.filter(d => !state.currentDate || d.Date === state.currentDate);
   const pageRows   = state.filteredRows.slice((state.currentPage-1)*PAGE_SIZE, state.currentPage*PAGE_SIZE);
+
   document.getElementById('main').innerHTML =
     buildSummaryHTML(v, branchRows) +
     buildDemandFactorHTML(branchRows) +
+    buildChartsHTML() +
     buildFiltersHTML(branchRows, state.filteredRows.length) +
     buildTableHTML(pageRows);
+
+  renderCharts(chartRows);
 }
 </script>
 </body>
