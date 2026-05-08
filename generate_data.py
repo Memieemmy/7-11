@@ -201,11 +201,11 @@ def generate_record(village_id, village_name, sku, obs_date: date) -> dict:
     predicted   = clamp_int(base_demand * mult, 1, 80)
 
     # Inventory — generated independently to produce realistic status mix:
-    #   ~60% BALANCED, ~25% STOCKOUT, ~15% OVERSTOCK
+    #   ~45% BALANCED, ~25% STOCKOUT, ~30% OVERSTOCK
     roll = random.random()
-    if roll < 0.60:     # BALANCED: inventory close to demand
+    if roll < 0.45:     # BALANCED: inventory close to demand
         inventory = clamp_int(predicted + random.randint(-SAFETY_STOCK, SAFETY_STOCK), 0, 120)
-    elif roll < 0.85:   # STOCKOUT: inventory meaningfully below demand
+    elif roll < 0.70:   # STOCKOUT: inventory meaningfully below demand
         shortage  = random.randint(SAFETY_STOCK + 1, max(SAFETY_STOCK + 2, predicted // 2))
         inventory = clamp_int(predicted - shortage, 0, 120)
     else:               # OVERSTOCK: inventory meaningfully above demand
@@ -245,10 +245,7 @@ def generate_record(village_id, village_name, sku, obs_date: date) -> dict:
 
 
 def pick_date_for_village(village_id: str) -> date:
-    """Each village gets one observation date in the past 90 days."""
-    seed_offset = int(village_id[1:]) * 7
-    base = date(2024, 1, 1)
-    return base + timedelta(days=seed_offset % 90 + random.randint(0, 14))
+    return date.today()
 
 
 def build_village_summary(village_id, village_name, records) -> dict:

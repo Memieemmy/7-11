@@ -18,10 +18,11 @@ BATCH_SIZE = 100  # insert ครั้งละ 100 rows
 
 # ── HELPERS ──────────────────────────────────────────────────────────────────
 
-def post(endpoint, rows):
+def post(endpoint, rows, upsert=False):
     url  = f"{SUPABASE_URL}/rest/v1/{endpoint}"
     body = json.dumps(rows).encode()
-    req  = urllib.request.Request(url, data=body, headers=HEADERS, method="POST")
+    hdrs = {**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"} if upsert else HEADERS
+    req  = urllib.request.Request(url, data=body, headers=hdrs, method="POST")
     try:
         with urllib.request.urlopen(req) as res:
             return res.status
@@ -29,12 +30,22 @@ def post(endpoint, rows):
         print(f"  ❌ HTTP {e.code}: {e.read().decode()}")
         return e.code
 
-def insert_batches(table, rows, key_fn):
+def delete_today(table, date_str):
+    url = f"{SUPABASE_URL}/rest/v1/{table}?date=eq.{date_str}"
+    req = urllib.request.Request(url, headers=HEADERS, method="DELETE")
+    try:
+        with urllib.request.urlopen(req) as res:
+            return res.status
+    except urllib.error.HTTPError as e:
+        print(f"  ❌ DELETE {e.code}: {e.read().decode()}")
+        return e.code
+
+def insert_batches(table, rows, upsert=False):
     total   = len(rows)
     success = 0
     for i in range(0, total, BATCH_SIZE):
         batch  = rows[i:i + BATCH_SIZE]
-        status = post(table, batch)
+        status = post(table, batch, upsert=upsert)
         if status in (200, 201):
             success += len(batch)
             print(f"  ✅ {table}: {min(i+BATCH_SIZE, total)}/{total}")
@@ -55,7 +66,7 @@ print(f"   sku_detail: {len(detail)} rows\n")
 
 # ── INSERT villages ───────────────────────────────────────────────────────────
 
-print("🏪 Import villages...")
+print("🏪 Import villages (upsert)...")
 village_rows = [
     {
         "village_id":            v["Village_ID"],
@@ -69,9 +80,14 @@ village_rows = [
     }
     for v in villages
 ]
-insert_batches("villages", village_rows, lambda r: r["village_id"])
+insert_batches("villages", village_rows, upsert=True)
 
 # ── INSERT sku_detail ─────────────────────────────────────────────────────────
+
+today_str = detail[0]["Date"] if detail else ""
+if today_str:
+    print(f"\n🗑️  ลบข้อมูลวัน {today_str} เก่าออกก่อน...")
+    delete_today("sku_detail", today_str)
 
 print("\n📦 Import sku_detail...")
 detail_rows = [
@@ -96,6 +112,6 @@ detail_rows = [
     }
     for d in detail
 ]
-insert_batches("sku_detail", detail_rows, lambda r: r["sku_id"])
+insert_batches("sku_detail", detail_rows)
 
 print("\n🎉 เสร็จแล้ว! เช็คข้อมูลใน Supabase → Table Editor ได้เลยค่ะ")
